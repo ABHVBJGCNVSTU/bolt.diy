@@ -19,6 +19,10 @@ export default defineConfig((config) => {
     build: {
       target: 'esnext',
     },
+    server: {
+      // Allow the Railway-generated public domain when running the dev server on Railway
+      allowedHosts: [process.env.RAILWAY_PUBLIC_DOMAIN].filter((h): h is string => Boolean(h)),
+    },
     plugins: [
       nodePolyfills({
         include: ['buffer', 'process', 'util', 'stream'],

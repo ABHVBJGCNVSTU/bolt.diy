@@ -26,6 +26,7 @@ RUN pnpm install --offline --frozen-lockfile
 RUN NODE_OPTIONS=--max-old-space-size=4096 pnpm run build
 
 # Keep only production deps for runtime
+FROM build AS prod-deps
 RUN pnpm prune --prod --ignore-scripts
 
 
@@ -43,7 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 
 # Copy only what we need to run
 COPY --from=build /app/build /app/build
-COPY --from=build /app/node_modules /app/node_modules
+COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY --from=build /app/package.json /app/package.json
 
 EXPOSE 3000
@@ -90,3 +91,13 @@ ENV GROQ_API_KEY=${GROQ_API_KEY} \
 
 RUN mkdir -p /app/run
 CMD ["pnpm", "run", "dev", "--host"]
+
+
+# ---- railway stage (must stay LAST: Railway builds the last stage) ----
+# Serves the built app with wrangler instead of the memory-hungry Vite dev server.
+FROM build AS railway
+ENV NODE_ENV=production
+ENV RUNNING_IN_DOCKER=true
+RUN apt-get update && apt-get install -y --no-install-recommends bash && rm -rf /var/lib/apt/lists/*
+EXPOSE 5173
+CMD ["pnpm", "run", "dockerstart"]
